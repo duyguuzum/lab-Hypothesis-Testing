@@ -1,0 +1,682 @@
+Lab | Hypothesis Testing
+
+Challenge 1 - Exploring the Data
+
+In this challenge, we will examine all salaries of employees of the San Francisco. We will start by loading the dataset and examining its contents.
+
+data = pd.read_csv('Salaries.csv')
+
+Examine the salaries dataset using the head function below.
+
+data.head()
+
+We see from looking at the head function that there is quite a bit of missing data. Get the amount of missing data in every column
+
+missing_values = data.isnull().sum()
+
+# Print the missing values count for each column
+print(missing_values)
+
+Get the shape of the dataframe
+
+data.shape
+
+Given output of the previous two cells, drop the corresponding column and compute again the amount of missing values
+
+data.drop('Notes', axis=1, inplace=True)
+
+missing_values = data.isnull().sum()
+
+# Print the missing values count for each column
+print(missing_values)
+
+Check out what are the possible values of the column "Status".
+
+unique_values = data["Status"].unique()
+
+# Printing the unique values
+print(unique_values)
+
+Drop any row with missing values in the "Status" column and compute again the number of missing values.
+
+data = data.dropna(subset=['Status'])
+-----
+missing_values = data['Status'].isnull().sum()
+print("Number of missing values in 'Status' column:", missing_values)
+data.isnull().sum()
+
+Check out the types of each column and see if they make sense.
+
+data.dtypes
+
+Do any type conversions and reset the index.
+
+data = data.reset_index(drop=True)
+------
+data
+
+Check out if "TotalPayBenefits" = "BasePay" + "OvertimePay" + "OtherPay" + "Benefits"
+
+is_equal = data['TotalPayBenefits'] == (data['BasePay'] + data['OvertimePay'] + data['OtherPay'] + data['Benefits'])
+
+# Printing the result
+print(is_equal)
+
+What is the percetage of employees for which the previous assumption is not True?
+
+sum_components = data["BasePay"] + data["OvertimePay"] + data["OtherPay"] + data["Benefits"]
+
+# Check if the assumption is true for each employee
+assumption_true = data["TotalPayBenefits"] == sum_components
+
+# Calculate the percentage of employees for whom the assumption is not true
+percentage_not_true = 100 * (1 - assumption_true.mean())
+
+percentage_not_true
+
+There are different departments in the city. List all departments and the count of employees in each department.
+
+department_counts = data.groupby('JobTitle')['EmployeeName'].count().reset_index()
+
+# Displaying the result
+department_counts
+
+Challenge 2 - Hypothesis Tests
+
+Import the correct one sample test function from scipy and perform the hypothesis test for a 95% two sided confidence interval.
+
+from scipy.stats import ttest_1samp
+
+# Step 1: Calculate hourly wage for each full-time worker
+data['HourlyWage'] = data['TotalPayBenefits'] / (50 * (5 * 8))  # Assuming 50 weeks and 40 hours per week
+
+# Set up the hypothesis test
+alpha = 0.05  # Significance level
+null_hypothesis = 75  # Null hypothesis value
+
+# Perform the hypothesis test and calculate the confidence interval
+t_statistic, p_value = ttest_1samp(data['HourlyWage'], null_hypothesis)
+confidence_interval = np.percentile(data['HourlyWage'], [2.5, 97.5])
+
+# Print the results
+print("Test Statistic:", t_statistic)
+print("p-value:", p_value)
+print("Confidence Interval (95%):", confidence_interval)
+data
+
+(Compute the mean hourly wage for all the "FT" employees)
+
+ft_employees = data[data['Status'] == 'FT']
+
+# Calculate the hourly wage for each "FT" employee
+hourly_wages = ft_employees['TotalPayBenefits'] / (50 * 40)
+
+# Compute the mean hourly wage
+mean_hourly_wage = hourly_wages.mean()
+
+print("Mean Hourly Wage for FT Employees: $" + str(mean_hourly_wage))
+
+(compute the t_statistic). Take into account that this dataset is a sample of a real population.
+# Remember that you only need to consider "FT" employees
+
+from scipy import stats
+
+# Filter the data to include only "FT" employees
+ft_data = data[data['Status'] == 'FT']
+
+# Extract the relevant variable you want to analyze
+variable = ft_data['HourlyWage']
+
+# Calculate the sample mean and standard deviation
+sample_mean = np.mean(variable)
+sample_std = np.std(variable, ddof=1)
+
+# Define the null hypothesis value (e.g., population mean)
+null_hypothesis = 0
+
+# Calculate the t-statistic
+n = len(variable)  # sample size
+t_statistic = (sample_mean - null_hypothesis) / (sample_std / np.sqrt(n))
+
+print(t_statistic)
+
+Method 1: Critical value. Get the critical value and compare it against your statisttic.
+
+import scipy.stats
+
+lower_critical_value, upper_critical_value = scipy.stats.t.ppf((0.05/2), df=len(variable)-1), scipy.stats.t.ppf(1-(0.05/2), df=len(variable)-1)
+print("The lower critical value is {:.3f}".format(lower_critical_value))
+print("The upper critical value is {:.3f}".format(upper_critical_value))
+
+Method 2: Use the p-value method.
+
+import scipy.stats as stats
+
+ft_data = data[data['Status'] == 'FT']
+
+# Extract the relevant variable you want to analyze
+variable = ft_data['HourlyWage']
+
+# Calculate the sample mean and standard deviation
+sample_mean = np.mean(variable)
+sample_std = np.std(variable, ddof=1)
+
+# Define the null hypothesis value (e.g., population mean)
+null_hypothesis = 0
+
+# Calculate the t-statistic
+n = len(variable)  # sample size
+t_statistic = (sample_mean - null_hypothesis) / (sample_std / np.sqrt(n))
+
+# Calculate the degrees of freedom
+degrees_of_freedom = n - 1
+
+# Calculate the p-value (assuming a two-tailed test)
+p_value = 2 * (1 - stats.t.cdf(abs(t_statistic), df=degrees_of_freedom))
+
+# Print the t-statistic and p-value
+print("t-statistic:", t_statistic)
+print("p-value:", p_value)
+
+Method 3: Use the ttest_1samp function from scipy
+
+stat, pval = ttest_1samp(variable, popmean = 5.6, alternative = "two-sided") 
+stat, pval
+
+-We are also curious about salaries in the police force. The chief of police in San Francisco claimed in a press briefing that salaries this year are higher than last year's mean of $86000/year for all salaried employees (use the column "TotalPayBenefits". Test hypothesis using a 95% confidence interval.
+
+Hint: Use apply and a lambda function to check in "Police" is in the "JobTitle" to get all the "Police" jobs.
+
+import scipy.stats as stats
+police_data = data[data['JobTitle'].apply(lambda x: 'Police' in x)]
+current_year_mean = police_data['TotalPayBenefits'].mean()
+previous_year_mean = 86000
+t_statistic, p_value = stats.ttest_1samp(police_data['TotalPayBenefits'], previous_year_mean)
+t_statistic
+
+- Method 1: Critical value. Get the critical value and compare it against your statisttic.
+
+import scipy.stats
+
+lower_critical_value, upper_critical_value = scipy.stats.t.ppf((0.05/2), df=len(police_data)-1), scipy.stats.t.ppf(1-(0.05/2), df=len(police_data)-1)
+print("The lower critical value is {:.3f}".format(lower_critical_value))
+print("The upper critical value is {:.3f}".format(upper_critical_value))
+
+-Method 2: Use the p-value method.
+
+import scipy.stats as stats
+police_data = data[data['JobTitle'].apply(lambda x: 'Police' in x)]
+current_year_mean = police_data['TotalPayBenefits'].mean()
+previous_year_mean = 86000
+t_statistic, p_value = stats.ttest_1samp(police_data['TotalPayBenefits'], previous_year_mean)
+p_value
+
+-Method 3: Use the ttest_1samp function from scipy
+
+stat, pval = ttest_1samp(variable, popmean = 5.6, alternative = "two-sided") 
+stat, pval
+
+-The workers from the "JobTitle" with the most employees have complained that their hourly wage is less than $35/hour. Using a one sample t-test, test this one-sided hypothesis at the 95% confidence level.
+
+import scipy.stats as stats
+
+department_with_most_employees = data['JobTitle'].value_counts().idxmax()
+
+department_data = data[data['JobTitle'] == department_with_most_employees]
+
+t_statistic, p_value = stats.ttest_1samp(department_data['HourlyWage'], 35, alternative='less')
+
+alpha = 0.05  # Significance level of 0.05 (95% confidence level)
+if p_value < alpha:
+    print(f"The workers from the '{department_with_most_employees}' department have a significantly lower hourly wage than $35/hour.")
+else:
+    print(f"There is not enough evidence to support the claim that the workers from the '{department_with_most_employees}' department have a lower hourly wage than $35/hour.")
+    
+department_with_most_employees
+
+-(compute the t_statistic). Take into account that this dataset is a sample of a real population.
+# Remember that you only need to consider the right "JobTitle" employees
+
+import scipy.stats as stats
+
+department_with_most_employees = data['JobTitle'].value_counts().idxmax()
+
+department_data = data[data['JobTitle'] == department_with_most_employees]
+
+t_statistic, p_value = stats.ttest_1samp(department_data['HourlyWage'], 35, alternative='less')
+
+print(t_statistic)
+
+-Method 1: Critical value. Get the critical value and compare it against your statisttic.
+
+import scipy.stats
+
+lower_critical_value, upper_critical_value = scipy.stats.t.ppf((0.05/2), df=len(department_data)-1), scipy.stats.t.ppf(1-(0.05/2), df=len(department_data)-1)
+print("The lower critical value is {:.3f}".format(lower_critical_value))
+print("The upper critical value is {:.3f}".format(upper_critical_value))
+
+-Method 2: Use the p-value method.
+
+import scipy.stats as stats
+
+department_with_most_employees = data['JobTitle'].value_counts().idxmax()
+
+department_data = data[data['JobTitle'] == department_with_most_employees]
+
+t_statistic, p_value = stats.ttest_1samp(department_data['HourlyWage'], 35, alternative='less')
+
+print(p_value)
+
+-Method 3: Use the ttest_1samp function from scipy. 
+
+import scipy.stats as stats
+
+department_with_most_employees = data['JobTitle'].value_counts().idxmax()
+
+department_data = data[data['JobTitle'] == department_with_most_employees]
+
+t_statistic, p_value = stats.ttest_1samp(department_data['HourlyWage'], 35, alternative='less')
+
+print(t_statistic,p_value)
+
+Challenge 3: To practice - Constructing Confidence Intervals
+
+While testing our hypothesis is a great way to gather empirical evidence for accepting or rejecting the hypothesis, another way to gather evidence is by creating a confidence interval. A confidence interval gives us information about the true mean of the population. So for a 95% confidence interval, we are 95% sure that the mean of the population is within the confidence interval. ).
+
+To read more about confidence intervals, click here.
+
+In the cell below, we will construct a 95% confidence interval for the mean hourly wage of all hourly workers.
+
+To compute the confidence interval of the hourly wage, use the 0.95 for the confidence level.
+
+-Method 1: Get the critical values which correspond to a 95% confidence.
+
+import scipy.stats as stats
+
+hourly_wages = data['TotalPayBenefits'] / (50 * 40)
+
+# Compute the mean hourly wage
+mean_hourly_wage = hourly_wages.mean()
+
+std_dev = np.std(hourly_wages)
+
+# Sample statistics
+x_bar = mean_hourly_wage  # Sample mean
+s = std_dev  # Sample standard deviation
+n = data['TotalPayBenefits'].count()  # Sample size
+
+# Critical value
+confidence_level = 0.95
+z = stats.norm.ppf(1 - (1 - confidence_level) / 2)
+
+# Compute confidence interval
+lower_bound = x_bar - z * (s / np.sqrt(n))
+upper_bound = x_bar + z * (s / np.sqrt(n))
+
+x_bar
+# Print the confidence interval
+print('Sample mean:',x_bar)
+print("95% Confidence Interval: ({:.2f}, {:.2f})".format(lower_bound, upper_bound))
+
+-Now compute a 95% confidence interval for the hourly salary of all the Police employees.
+
+from scipy import stats
+
+police_data = data[data['JobTitle'].str.contains('Police')]
+
+total_pay_benefits = police_data['TotalPayBenefits']
+
+
+hours_worked_per_week = 40  # Assuming 40 hours worked per week
+total_pay_benefits_hourly = total_pay_benefits / (hours_worked_per_week * 52 )
+
+sample_mean = np.mean(total_pay_benefits_hourly)
+sample_std = np.std(total_pay_benefits_hourly, ddof=1) 
+
+# Set the confidence level (1 - alpha)
+confidence_level = 0.95
+alpha = 1 - confidence_level
+
+# Calculate the critical value (two-tailed test)
+critical_value = stats.t.ppf(1 - alpha / 2, df=len(total_pay_benefits_hourly) - 1)
+
+# Calculate the margin of error
+margin_of_error = critical_value * (sample_std / np.sqrt(len(total_pay_benefits_hourly)))
+
+# Calculate the confidence interval
+confidence_interval = (sample_mean - margin_of_error, sample_mean + margin_of_error)
+
+# Print the results
+print("Sample Mean:", sample_mean)
+print("Margin of Error:", margin_of_error)
+print("95% Confidence Interval:", confidence_interval)
+
+-Chi2 test
+Now we want to know if the amount of full time "FT" and part time "PT" employees is equal between Lawers, Meds, Police, Firemen and other departments.
+
+Considering all the options in this groups of employees will be very time consuming. To simplify this process, create first a function that returns:
+
+"Policemen" if "Police" is found on "JobTitle"
+"Firemen" if "Fire" is found on "JobTitle"
+"Medical" if "Med" or "Nurse" is found on "JobTitle"
+"Lawyer" if "Attorney" is found on "JobTitle"
+"Other" in any other cases
+Then, create a new column named "employee_group" that determines to which group belong the employee.
+
+-(Create the function)
+def categorize_job_title(title):
+    title = title.lower()  # Convert to lowercase for case-insensitive matching
+
+    if 'police' in title:
+        return 'Policemen'
+    elif 'fire' in title:
+        return 'Firemen'
+    elif 'med' in title or 'nurse' in title:
+        return 'Medical'
+    elif 'attorney' in title:
+        return 'Lawyer'
+    else:
+        return 'Other'
+
+-(Apply the function)
+data['employee_group'] = data['JobTitle'].apply(categorize_job_title)
+
+data
+
+-Determine how many "PT" and "FT" employess have all the employees groups.(Store the output dataframe into a new variable)
+
+output_df = data.groupby(['employee_group', 'Status']).size().unstack()
+
+# Renaming the columns for better clarity
+output_df.columns = ['PT', 'FT']
+
+# Filling missing values with 0
+output_df = output_df.fillna(0)
+
+# Converting the counts to integers
+output_df['PT'] = output_df['PT'].astype(int)
+output_df['FT'] = output_df['FT'].astype(int)
+
+# Printing the output DataFrame
+print(output_df)
+
+-Now try compute the expected frequencies doing the calculations with the individual probabilities. Remember that the Chi2 test assumes that both variables (employee_group and FT/PT) are not related (therefore they are independent). Therefore, to compute the expected frequencies you need to compute the probability of each cell and multiply it by the number of observations. ie:
+
+𝜈(𝑥,𝑦)=𝑝(𝑥,𝑦)∗𝑁=𝑝(𝑥)∗𝑝(𝑦)∗𝑁
+ 
+bear in mind that in general:  𝑝(𝑥,𝑦)≠𝑝(𝑥)∗𝑝(𝑦)
+ ; the equality will only be true if x and y are independent. However, the null hypotheses says that x and y are independent. but that's what we're assuming with the null hypotheses.
+
+where "x" is the "employee_group" and "y" the (FT/PT).
+
+frequencies = pd.DataFrame(columns=['FT', 'PT', 'Total'])
+
+# Define the probabilities
+prob_FT = 0.5
+prob_PT = 0.5
+
+# Define the number of observations
+N = 100  # Assuming there are 100 observations
+
+# Define the employee groups
+employee_groups = ['Firemen', 'Lawyer', 'Medical', 'Policemen', 'Other']
+
+# Calculate the expected frequencies
+for group in employee_groups:
+    # Calculate the expected frequencies for FT and PT
+    freq_FT = prob_FT * N
+    freq_PT = prob_PT * N
+
+    # Add the frequencies to the dataframe
+    frequencies.loc[group] = [freq_FT, freq_PT, freq_FT + freq_PT]
+
+# Add a row for the total frequencies
+total_FT = frequencies['FT'].sum()
+total_PT = frequencies['PT'].sum()
+total_obs = total_FT + total_PT
+frequencies.loc['Total'] = [total_FT, total_PT, total_obs]
+
+# Display the frequencies dataframe
+print(frequencies)
+
+-Compute Expected frequency of being "Firemen" and "FT". Store the solution in a variable named "firemen_ft"
+
+observed = data[(data['Status'] == 'FT') & (data['employee_group'] == 'Firemen')].shape[0]
+
+# Compute row total
+row_total = data[data['Status'] == 'FT'].shape[0]
+
+# Compute column total
+column_total = data[data['employee_group'] == 'Firemen'].shape[0]
+
+# Compute grand total
+grand_total = data.shape[0]
+
+# Compute expected frequency
+expected = (row_total * column_total) / grand_total
+
+# Store the result in a variable named "firemen_pt"
+firemen_ft = expected
+
+print("Expected frequency of being 'Firemen' and 'PT':", firemen_ft)
+
+-Compute Expected frequency of being "Firemen" and "PT". Store the solution in a variable named "firemen_pt"
+
+observed = data[(data['Status'] == 'PT') & (data['employee_group'] == 'Firemen')].shape[0]
+
+# Compute row total
+row_total = data[data['Status'] == 'PT'].shape[0]
+
+# Compute column total
+column_total = data[data['employee_group'] == 'Firemen'].shape[0]
+
+# Compute grand total
+grand_total = data.shape[0]
+
+# Compute expected frequency
+expected = (row_total * column_total) / grand_total
+
+# Store the result in a variable named "firemen_pt"
+firemen_pt = expected
+
+print("Expected frequency of being 'Firemen' and 'PT':", firemen_pt)
+
+-Compute Expected frequency of being "Lawyers" and "FT". Store the solution in a variable named "lawyers_ft"
+
+observed = data[(data['Status'] == 'FT') & (data['employee_group'] == 'Lawyer')].shape[0]
+
+# Compute row total
+row_total = data[data['Status'] == 'FT'].shape[0]
+
+# Compute column total
+column_total = data[data['employee_group'] == 'Lawyer'].shape[0]
+
+# Compute grand total
+grand_total = data.shape[0]
+
+# Compute expected frequency
+expected = (row_total * column_total) / grand_total
+
+# Store the result in a variable named "lawyers_ft"
+lawyer_ft = expected
+
+print("Expected frequency of being 'Lawyer' and 'FT':", lawyer_ft)
+
+-Compute Expected frequency of being "Lawyers" and "PT". Store the solution in a variable named "lawyers_pt"
+
+observed = data[(data['Status'] == 'PT') & (data['employee_group'] == 'Lawyer')].shape[0]
+
+# Compute row total
+row_total = data[data['Status'] == 'PT'].shape[0]
+
+# Compute column total
+column_total = data[data['employee_group'] == 'Lawyer'].shape[0]
+
+# Compute grand total
+grand_total = data.shape[0]
+
+# Compute expected frequency
+expected = (row_total * column_total) / grand_total
+
+# Store the result in a variable named "lawyers_pt"
+lawyer_pt = expected
+
+print("Expected frequency of being 'Lawyer' and 'PT':", lawyer_pt)
+
+-Compute Expected frequency of being "Medical" and "FT". Store the solution in a variable named "medical_ft"
+
+observed = data[(data['Status'] == 'FT') & (data['employee_group'] == 'Medical')].shape[0]
+
+# Compute row total
+row_total = data[data['Status'] == 'FT'].shape[0]
+
+# Compute column total
+column_total = data[data['employee_group'] == 'Medical'].shape[0]
+
+# Compute grand total
+grand_total = data.shape[0]
+
+# Compute expected frequency
+expected = (row_total * column_total) / grand_total
+
+# Store the result in a variable named "medical_ft"
+medical_ft = expected
+
+print("Expected frequency of being 'Medical' and 'FT':", medical_ft)
+
+-Compute Expected frequency of being "Medical" and "PT". Store the solution in a variable named "medical_pt"
+
+observed = data[(data['Status'] == 'PT') & (data['employee_group'] == 'Medical')].shape[0]
+
+# Compute row total
+row_total = data[data['Status'] == 'PT'].shape[0]
+
+# Compute column total
+column_total = data[data['employee_group'] == 'Medical'].shape[0]
+
+# Compute grand total
+grand_total = data.shape[0]
+
+# Compute expected frequency
+expected = (row_total * column_total) / grand_total
+
+# Store the result in a variable named "medical_pt"
+medical_pt = expected
+
+print("Expected frequency of being 'Medical' and 'PT':", medical_pt)
+
+-Compute Expected frequency of being "Other" and "FT". Store the solution in a variable named "other_ft"
+
+observed = data[(data['Status'] == 'FT') & (data['employee_group'] == 'Other')].shape[0]
+
+# Compute row total
+row_total = data[data['Status'] == 'FT'].shape[0]
+
+# Compute column total
+column_total = data[data['employee_group'] == 'Other'].shape[0]
+
+# Compute grand total
+grand_total = data.shape[0]
+
+# Compute expected frequency
+expected = (row_total * column_total) / grand_total
+
+# Store the result in a variable named "other_ft"
+other_ft = expected
+
+print("Expected frequency of being 'Other' and 'FT':", other_ft)
+
+-Compute Expected frequency of being "Other" and "PT". Store the solution in a variable named "other_pt"
+
+observed = data[(data['Status'] == 'PT') & (data['employee_group'] == 'Other')].shape[0]
+
+# Compute row total
+row_total = data[data['Status'] == 'PT'].shape[0]
+
+# Compute column total
+column_total = data[data['employee_group'] == 'Other'].shape[0]
+
+# Compute grand total
+grand_total = data.shape[0]
+
+# Compute expected frequency
+expected = (row_total * column_total) / grand_total
+
+# Store the result in a variable named "medical_ft"
+other_pt = expected
+
+print("Expected frequency of being 'Other' and 'PT':", other_pt)
+
+-Compute Expected frequency of being "Policement" and "FT". Store the solution in a variable named "policemen_ft"
+
+observed = data[(data['Status'] == 'FT') & (data['employee_group'] == 'Policemen')].shape[0]
+
+# Compute row total
+row_total = data[data['Status'] == 'FT'].shape[0]
+
+# Compute column total
+column_total = data[data['employee_group'] == 'Policemen'].shape[0]
+
+# Compute grand total
+grand_total = data.shape[0]
+
+# Compute expected frequency
+expected = (row_total * column_total) / grand_total
+
+# Store the result in a variable named "policemen_ft"
+policemen_ft = expected
+
+print("Expected frequency of being 'Policemen' and 'FT':", policemen_ft)
+
+-Compute Expected frequency of being "Policement" and "PT". Store the solution in a variable named "policemen_pt"
+
+observed = data[(data['Status'] == 'PT') & (data['employee_group'] == 'Policemen')].shape[0]
+
+# Compute row total
+row_total = data[data['Status'] == 'PT'].shape[0]
+
+# Compute column total
+column_total = data[data['employee_group'] == 'Policemen'].shape[0]
+
+# Compute grand total
+grand_total = data.shape[0]
+
+# Compute expected frequency
+expected = (row_total * column_total) / grand_total
+
+# Store the result in a variable named "policemen_ft"
+policemen_pt = expected
+
+print("Expected frequency of being 'Policemen' and 'PT':", policemen_pt)
+
+-Store all the expected frequencies of "FT" employees in a list
+Store all the "PT" employees into another list
+Create a dictionary with "FT" and "PT" as keys and as the values use the previous lists
+Create a dataframe with this dictionary using pd.DataFrame()
+
+ft_list = [firemen_ft, lawyer_ft, medical_ft, other_ft,policemen_ft ]
+pt_list = [firemen_pt, lawyer_pt, medical_pt, other_pt,policemen_pt ]
+
+dictionary = {"FT": ft_list, "PT": pt_list}
+
+df = pd.DataFrame(dictionary)
+df
+
+-Now use the "st.chi2_contingency()" from scipy.stats documentation here to conduct a Chi2 test to determine if the diferences between employee groups are statistically significant using a 95% confidence level. Hint: fill the function with a dataframe of actual frequencies.
+
+observed = df
+
+# Compute chi-square test
+chi2, p_value, _, expected = stats.chi2_contingency(observed)
+
+# Print the results
+print("Chi-square value:", chi2)
+print("P-value:", p_value)
+print("Expected frequencies:")
+print(expected)
+
+
+
+
+
+
